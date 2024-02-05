@@ -1,0 +1,7 @@
+
+date_col: 'Period'
+single_bank_analysis:
+  'Business Loans': [
+    'Loans to non-financial businesses',
+    'Loans to financial institutions',
+  ]

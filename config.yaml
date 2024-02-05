@@ -1,0 +1,44 @@
+# Set required column data types
+column_typing_dict:
+  date: ['Period']
+  str: ['ABN', 'Institution Name']
+  skip_cols: ~
+  else_cols_as_type: 'float'
+column_adjustments_dict:
+  dollars_conversion:
+    col_list_type: all_but
+    col_list: ['Period', 'ABN', 'Institution Name']
+    ordered_adjustments:
+      multiply: 1000
+expected_columns_list: [
+  'Period',
+  'ABN',
+  'Institution Name',
+  'Cash and deposits with financial institutions',
+  'Trading securities',
+  'Investment securities',
+  'Net acceptances of customers',
+  'Total residents assets',
+  'Total securitised assets on balance sheet',
+  'Loans to non-financial businesses',
+  'Loans to financial institutions',
+  'Loans to general government',
+  'Loans to households: Housing: Owner-occupied',
+  'Loans to households: Housing: Investment',
+  'Loans to households: Credit cards',
+  'Loans to households: Other',
+  'Loans to community service organisations',
+  'Total residents loans and finance leases',
+  'Intra-group loans and finance leases',
+  'Acceptances',
+  'Intra-group deposits',
+  'Negotiable Certificates of Deposit',
+  'Total short-term borrowings',
+  'Total long-term borrowings',
+  'Deposits by non-financial businesses',
+  'Deposits by financial institutions',
+  'Deposits by general government',
+  'Deposits by households',
+  'Deposits by community service organisations',
+  'Total residents deposits',
+]
