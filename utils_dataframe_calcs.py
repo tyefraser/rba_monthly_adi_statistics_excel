@@ -25,7 +25,7 @@ def filter_dataframe_by_values(df, df_column_filter_dict):
 
 def group_data(
         df,
-        base_column,
+        base_columns_list,
         calculated_column,
         calculation,
         column_name,
@@ -35,7 +35,7 @@ def group_data(
 
     Parameters:
     - df (pd.DataFrame): The input DataFrame.
-    - base_column (str): The column to group by.
+    - base_columns_list {list} (str): The column to group by.
     - calculated_column (str): The column to perform the calculation on.
     - calculation (str): The type of aggregation ('count' for counting unique values, 'sum' for summing).
     - column_name (str): The name for the new calculated column.
@@ -46,15 +46,15 @@ def group_data(
     logger.debug('\nRunning: group_data')
 
     if calculation == 'count':
-        # Group by 'base_column' and count unique values in 'calculated_column'
-        aggregated_df = df.groupby(base_column)[calculated_column].nunique().reset_index()
+        # Group by 'base_columns_list' and count unique values in 'calculated_column'
+        aggregated_df = df.groupby(base_columns_list)[calculated_column].nunique().reset_index()
 
         # Rename the calculated column
         aggregated_df = aggregated_df.rename(columns={calculated_column: column_name})
 
     elif calculation == 'sum':
-        # Group by 'base_column' and sum values in 'calculated_column'
-        aggregated_df = df.groupby(base_column)[calculated_column].sum().reset_index()
+        # Group by 'base_columns_list' and sum values in 'calculated_column'
+        aggregated_df = df.groupby(base_columns_list)[calculated_column].sum().reset_index()
 
         # Rename the calculated column
         aggregated_df = aggregated_df.rename(columns={calculated_column: column_name})
@@ -74,7 +74,7 @@ def filter_dataframe_by_values_then_group(
     Parameters:
     - df (pd.DataFrame): The input DataFrame.
     - group_data_dict (dict): A dictionary containing grouping information. E.g.
-        base_column: 'Period'
+        base_columns_list: ['Period']
         column_groupings_dict:
             'ABN - count':
             'calculated_column': 'ABN'
@@ -107,7 +107,7 @@ def filter_dataframe_by_values_then_group(
         # Group the DataFrame based on specified criteria
         column_grouping_df = group_data(
             df=column_grouping_df,
-            base_column=group_data_dict['base_column'],
+            base_columns_list=group_data_dict['base_columns_list'],
             calculated_column=group_settings['calculated_column'],
             calculation=group_settings['calculation'],
             column_name=column_grouping,
