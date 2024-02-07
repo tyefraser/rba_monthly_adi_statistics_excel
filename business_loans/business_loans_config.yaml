@@ -1,11 +1,12 @@
-date_col: 'Period'
-account_groupings:
-  'Business Loans': [
-    'Loans to non-financial businesses',
-    'Loans to financial institutions',
-  ]
+
+# account_groupings:
+#   'Business Loans': [
+#     'Loans to non-financial businesses',
+#     'Loans to financial institutions',
+#   ]
 
 groupings_dict:
+  date_col: 'Period'
   base_columns_list: ['Period', 'ABN', 'Institution Name']
   column_groupings_dict:
     'Business Loans':
@@ -14,5 +15,5 @@ groupings_dict:
           'Loans to non-financial businesses',
           'Loans to financial institutions',
         ]
-      'calculated_column': 'Value'
-      'calculation': 'sum'
+      calculations_dict:
+        'Value': 'sum'

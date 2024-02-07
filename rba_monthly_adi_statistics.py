@@ -2,7 +2,7 @@ import pandas as pd
 from pd_data_frame_checks import check_columns_existence
 
 from utils import read_yaml
-from pd_data_frame_checks import convert_columns_dict_type_allocation
+from pd_data_frame_checks import convert_columns_dict_type_allocation, column_adjustments
 from process_specific_bank.process_specific_bank import specific_bank_calculations
 
 def read_and_process_data(
@@ -28,12 +28,14 @@ def read_and_process_data(
         target_columns=config_dict['expected_columns_list']
     )
 
-    # Column Data Types    
-    convert_columns_dict_type_allocation(
+    # Column Data Types
+    rba_monthly_stats_df=convert_columns_dict_type_allocation(
         df=rba_monthly_stats_df.copy(),
         col_types_dict=config_dict['column_typing_dict'],
     )
 
+    # Column Adjustments
+    rba_monthly_stats_df=column_adjustments(rba_monthly_stats_df, config_dict)
 
     return rba_monthly_stats_df
 

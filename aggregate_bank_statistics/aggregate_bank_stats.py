@@ -1,7 +1,7 @@
 import logging
 
 from utils import absolute_path, read_yaml
-from utils_dataframe_calcs import filter_dataframe_by_values_then_group, df_column_movements_multiple
+from utils_dataframe_calcs_narrow import filter_dataframe_by_values_then_group, df_column_movements_multiple
 
 logger = logging.getLogger(__name__)
 
