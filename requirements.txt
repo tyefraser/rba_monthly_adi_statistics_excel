@@ -1,1 +1,6 @@
 PyYAML
+plotly
+plotly.express
+matplotlib
+nbformat
+dash
