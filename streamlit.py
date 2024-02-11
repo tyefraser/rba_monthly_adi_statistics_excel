@@ -3,60 +3,48 @@ import pandas as pd
 import logging
 
 from utils import read_yaml
-from rba_monthly_adi_statistics import read_and_process_data
+from data_generator import read_and_process_data
+from data_generator import data_generator
+from tabs.tab1 import tab1_content
+from tabs.tab_business_banking import tab_business_banking_content
+from tabs.tab_column_summary import tab_column_summary_content
 
+# Get data
+df = data_generator()
 
-logger = logging.getLogger(__name__)
+# Get aliases from yaml
+aliases_dict = read_yaml(file_path = 'aliases.yaml')
 
-# Arguments
-file_name: str = 'data/Monthly authorised deposit-taking institution statistics back-series March 2019 - December 2023.xlsx'
-sheet_name: str = 'Table 1'
-skiprows: int = 1
-processes_to_run: list = ['all']
-specific_bank_names_list: str = ['Macquarie Bank Limited']
-date_column: str = 'Period'
-
-
-# Read config
-config_dict = read_yaml(file_path = 'config.yaml')
-
-# Read and process data
-rba_monthly_stats_df = read_and_process_data(
-    config_dict=config_dict,
-    file_name=file_name,
-    sheet_name=sheet_name,
-    skiprows=skiprows,
-    date_column=date_column,        
-)
-
-# Melt the DataFrame to convert from wide to long format
-id_cols = ['Period', 'ABN', 'Institution Name']
-narrow_rba_monthly_stats_df = pd.melt(rba_monthly_stats_df, id_vars=id_cols, var_name='Variable', value_name='Value')
-
-
-df = narrow_rba_monthly_stats_df[
-    (narrow_rba_monthly_stats_df['Variable'] == 'Cash and deposits with financial institutions') &
-    (narrow_rba_monthly_stats_df['Institution Name'] == 'Woori Bank')
-][['Period', 'Value']]
-
-# st.write
 st.write("""
-# My first app
-Hello *world!*
-""")
+    # APRA - Monthly ADI Statistics (MADIS)
+    """)
 
-#st.line_chart(df)
-#st.line_chart(df)
 
-# Create a line chart with dates on the x-axis and values on the y-axis
-st.line_chart(df.set_index('Period'))
+# Present the reporting_date in the format of '30th December 2023'
+reporting_date = df['Period'].max()
+reporting_date_str = reporting_date.strftime('%d %B %Y')
+st.write(f"Reporting date: {reporting_date_str}")
 
-# # Assuming df is your DataFrame containing the data
-# 
-# # Select x and y axis columns
-# x_column = st.selectbox('Select x-axis column', df.columns)
-# y_column = st.selectbox('Select y-axis column', df.columns)
-# 
-# # Plot line chart
-# if x_column and y_column:
-#     st.line_chart(df[[x_column, y_column]])
+
+# Insert containers separated into tabs:
+tab1, tab2, tab3 = st.tabs(["Tab 1", "Business Banking", "Test"])
+
+# Tab 1 content
+with tab1:
+    tab_column_summary_content(
+        df=df,
+        aliases_dict=aliases_dict['aliases'],
+    )
+
+# Tab 2 content
+with tab2:
+    st.write("This is tab 3 content")
+    # tab_business_banking_content(
+    #     bb_df=data_dict['bb_df'],
+    #     aliases_dict=aliases_dict['aliases'],
+    # )
+
+# Tab 3 content
+with tab3:
+    st.write("This is tab 3 content")
+    

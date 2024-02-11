@@ -5,6 +5,7 @@ from pathlib import Path
 import logging
 import logging.config
 import yaml
+from math import isnan
 
 def project_absolute_path() -> Path:
     return Path(__file__).resolve().parents[0]
@@ -70,3 +71,59 @@ def read_yaml(file_path: str):
         print(f"Error: File '{file_path}' not found.")
     except YAMLError as e:
         print(f"Error parsing YAML in '{file_path}': {e}")
+
+def rounded_number(number):
+    if (number is None) or (isnan(number)):
+        formatted_amount = None
+    else:
+        scales = ['', 'K', 'M', 'Bn', 'Trn', 'Quadr', 'Quint', 'Sext', 'Sept', 'Oct', 'Non', 'Dec']  # Suffixes for scaling
+        
+        # Determine the appropriate scale
+        scale_index = 0
+        number_rounded = number
+        while abs(number_rounded) >= 1000 and scale_index < len(scales) - 1:
+            number_rounded /= 1000
+            scale_index += 1
+        
+        # Check number is within accepted scale
+        if scale_index >= len(scales):
+            raise ValueError("Absolute value of amount is too big to handle")  # Raise ValueError if scale index exceeds available scales
+        
+        # Adjust check for negative numbers
+        sign = ''
+        if number_rounded < 0:
+            sign = '-'
+            number_rounded = -1 * number_rounded
+
+        # Format string
+        number_string = "{:.2f}".format(number_rounded)
+        number_string_len=len(number_string)
+
+        # Round to appropriate decimal places based on integer part of the number
+        if number_string_len == 4:
+            formatted_amount = f"{number_string}"
+        elif number_string_len == 5:
+            formatted_amount = f"{number_string[0:4]}"
+        elif number_string_len == 6:
+            formatted_amount = f"{number_string[0:3]}"
+        elif number_string_len == 7:
+            formatted_amount = f"{number_string[0:4]}"
+        else:
+            # raise ValueError("Something went wrong")
+            print('error')
+            print(number)
+            print(number_rounded)
+            print(number_string)
+            print(number_string_len)
+            print(scale_index)
+
+    logger.info(formatted_amount)
+    return sign, formatted_amount, scales[scale_index]
+
+def rounded_dollars(dollars):
+    sign, dollars, scale = rounded_number(number = dollars)
+    return f'{sign}$ {dollars} {scale}'
+
+def rounded_dollars_md(dollars):
+    sign, dollars, scale = rounded_number(number = dollars)
+    return f'{sign}\$ {dollars} {scale}'

@@ -41,3 +41,9 @@ expected_columns_list: [
   'Deposits by community service organisations',
   'Total residents deposits',
 ]
+
+calculated_columns:
+  'Business Loans': [
+    ['add', 'Loans to non-financial businesses'],
+    ['add', 'Loans to financial institutions'],
+  ]

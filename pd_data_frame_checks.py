@@ -130,16 +130,16 @@ def column_adjustments(df, config_dict):
     return df
 
 # Example dictionary:
-config_dict = {
-    'column_adjustments_dict': {
-        'dollars_conversion': {
-            'all_but': ['Period', 'ABN', 'Institution Name'],
-            'ordered_adjustments': {
-                'multiply': 1000000
-            }
-        }
-    }
-}
+# config_dict = {
+#     'column_adjustments_dict': {
+#         'dollars_conversion': {
+#             'all_but': ['Period', 'ABN', 'Institution Name'],
+#             'ordered_adjustments': {
+#                 'multiply': 1000000
+#             }
+#         }
+#     }
+# }
 
 # Example usage:
 # df = column_adjustments(df, config_dict)
