@@ -150,6 +150,86 @@ def create_top_x_and_other_df(
 
     return top_x_and_other_df
 
+def ordered_category_list_fn(
+        df,
+        date_column,
+        selected_date,
+        selected_column,
+        category_column,
+        other_col = 'other',
+        other_at_end = True,
+):
+    # Get data for current month only
+    df = df[df[date_column] == selected_date]
+    
+    # Create ordered list
+    ordered_category_list = df.sort_values(by=selected_column, ascending=False).copy()[category_column].tolist()
+
+    # Move 'other' if required
+    if other_at_end:
+        # Remove 'other' from its current position
+        ordered_category_list.remove(other_col)
+
+        # Append 'other' to the end of the list
+        ordered_category_list.append(other_col)
+    
+    return ordered_category_list
+
+def graph_selected_month(
+    df,
+    date_column,
+    selected_date,
+    selected_column,
+    category_column,
+    ordered_category_list=None,
+    show_xaxis_labels = True,
+):
+
+    if ordered_category_list == None:
+        ordered_category_list = ordered_category_list_fn(
+            df = df,
+            date_column=date_column,
+            selected_date=selected_date,
+            selected_column=selected_column,
+            category_column=category_column,
+            other_col = 'other',
+            other_at_end = True,
+        )
+    
+    # Graph current month df
+    df_selected_date = df[df[date_column] == selected_date]
+
+    # Plot with Plotly Express
+    fig = px.bar(
+        df_selected_date,
+        x=category_column,
+        y=selected_column,
+        title=f"{selected_column} Month End Balances",
+        color=category_column,
+        category_orders={category_column: ordered_category_list},  # Ensure custom order is applied
+        # color_discrete_map=colors,
+        height=800
+    )
+
+    # Optionally customize the layout
+    fig.update_layout(
+        xaxis_title=category_column,
+        yaxis_title=selected_column,
+        legend_title=category_column,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        showlegend=False,
+    )
+
+    if not show_xaxis_labels:
+        fig.update_xaxes(tickangle=45, tickmode='array', tickvals=[])
+
+    st.plotly_chart(fig, use_container_width=True)
 
 def tab_column_summary_content(
         df,
@@ -193,7 +273,7 @@ def tab_column_summary_content(
         category_column,
         selected_category,
         selected_column,
-        default_x_value = None,
+        default_x_value = 15,
     )
 
     # Create df with top_x and other rows
@@ -206,77 +286,71 @@ def tab_column_summary_content(
     )
     st.write(top_x_and_other_df)
 
-
-
-
-    # # Create a slider widget with the unique values from the column
-    # top_x = st.slider('Select Top x', 1, df_column['rank'].max(), 15, 1)
-# 
-    # # Get Selected Month Data
-    # current_month_df = df_column[df_column[date_column] == selected_date]
-# 
-    # # Filter the data based on the selected option
-    # top_x_category_df = current_month_df[current_month_df['rank'] <= top_x]
-# 
-    # # List of the top x categories
-    # top_x_category_list = top_x_category_df[category_column].tolist()
-# 
-    # # add selected category to the list
-    # top_x_category_list.append(selected_category)
-# 
-    # # make sure the list is unique
-    # top_x_category_list = list(set(top_x_category_list))
-# 
-    # # Assuming df is your DataFrame with columns: date_column, category_column, and selected_category
-    # # and categories of interest are in the list: top_x_category_list
-# 
-    # # Filter DataFrame to include only categories of interest
-    # top_x_filtered_df = df[df[category_column].isin(top_x_category_list)][[date_column, category_column, selected_column]]
-# 
-    # # Group by month and category, summing the values
-    # grouped_df = top_x_filtered_df.groupby([top_x_filtered_df[date_column], category_column]).sum().reset_index()
-# 
-    # # Create a DataFrame with all unique months
-    # # to do: ensures there are no missing months (typing issue)
-    # # to do: all_months = pd.period_range(start=df[date_column].min(), end=df[date_column].max())
-    # # to do: all_months_df = pd.DataFrame({date_column: all_months})
-# 
-    # all_months_df = pd.DataFrame({date_column: df[date_column].unique()})
-# 
-    # # Cartesian product to get all combinations of months and categories of interest
-    # all_combinations_df = all_months_df.assign(key=1).merge(pd.DataFrame({category_column: top_x_category_list, 'key': 1}), on='key').drop('key', axis=1)
-# 
-# 
-    # # Merge with grouped DataFrame to fill missing combinations with zeros
-    # merged_df = pd.merge(all_combinations_df, grouped_df, on=[date_column, category_column], how='left').fillna(0)
-# 
-    # # Calculate sum of values for 'other' category for each month
-    # other_values = df[~df[category_column].isin(top_x_category_list)].groupby(df[date_column])[selected_column].sum().reset_index()
-    # other_values[category_column] = 'other'
-# 
-    # # Append 'other' values to merged DataFrame
-    # final_df = pd.concat([merged_df, other_values], ignore_index=True)
-# 
-    # # Sort DataFrame by date and category
-    # final_df = final_df.sort_values(by=[date_column, category_column])
-# 
-    # # Reset index
-    # final_df.reset_index(drop=True, inplace=True)
-
-    # stacked_area_100_perc(
-    #     df=final_df,
-    #     date_column=date_column,
-    #     category_column=category_column,
-    #     selected_column=selected_column,
-    # )
-
-    streamlit_column_graph(
-        df=final_df,
+    # Create default cetegory order - ordered list of category values including 'other' row
+    ordered_category_list = ordered_category_list_fn(
+        df = top_x_and_other_df,
         date_column=date_column,
-        category_column=category_column,
+        selected_date=selected_date,
         selected_column=selected_column,
-        display_data = False
+        category_column=category_column,
+        other_col = 'other',
+        other_at_end = True,
     )
+    st.write(ordered_category_list)
+
+    # Define colors for specific categories
+    # colors = {'YourCategory1': 'color1', 'YourCategory2': 'color2'}  # Define your color mapping
+
+    # Graph current month balances
+    graph_selected_month(
+        df=top_x_and_other_df,
+        date_column=date_column,
+        selected_date=selected_date,
+        selected_column=selected_column,
+        category_column=category_column,
+        ordered_category_list=ordered_category_list,
+        show_xaxis_labels = True,
+    )
+    
+
+
+    
+##    # GPT
+##    top_x_and_other_df_current = top_x_and_other_df[top_x_and_other_df[date_column] == selected_date]
+##    top_x_and_other_df_current = top_x_and_other_df_current.sort_values(by=selected_column, ascending=False).copy()
+##    
+##    # Define colors for specific categories in the same way as matplotlib example
+##    #colors = {'YourCategory1': 'color1', 'YourCategory2': 'color2'}
+##
+##    # Plot with Plotly Express
+##    fig = px.bar(top_x_and_other_df_current, x=category_column, y=selected_column,
+##                title="Your Chart Title",
+##                color=category_column,  # This assigns different colors for each category
+##                # color_discrete_map=colors
+##    )  # This uses your custom color mapping
+##
+##    # Optionally customize the layout
+##    fig.update_layout(xaxis_title=category_column, yaxis_title=selected_column)
+##    fig.update_xaxes(categoryorder='total descending')  # This line is optional and for additional sorting
+##
+##    st.plotly_chart(fig, use_container_width=True)
+##
+##    st.bar_chart(
+##        data=top_x_and_other_df_current,
+##        x=category_column,
+##        y=selected_column,
+##        # color=None,
+##        # width=0,
+##        # height=0,
+##        # use_container_width=True
+##    )
+##    streamlit_column_graph(
+##        df=top_x_and_other_df_current,
+##        date_column=date_column,
+##        category_column=category_column,
+##        selected_column=selected_column,
+##        display_data = False
+##    )
 
 
     # # Insert containers separated into tabs:
