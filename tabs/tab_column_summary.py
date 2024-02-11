@@ -495,45 +495,4 @@ def tab_column_summary_content(
         show_xaxis_labels = True,
     )
 
-
-    # Generate Key Points
-    st.write(prior_month)
-    filtered_data_current = df_column[(df_column['Period'] == current_month) & (df_column[category_column] == selected_category)]
-    filtered_data_prior = df_column[(df_column['Period'] == prior_month) & (df_column[category_column] == selected_category)]
-    st.write(filtered_data_current)
-    st.write(filtered_data_prior)
-
-    movement_txt = str(rounded_dollars(filtered_data_current[selected_column + ' - MoM ($)'].values[0]))
-    sign, number, scale =rounded_number(filtered_data_current[selected_column + ' - MoM ($)'].values[0])
-
-
-    st.write(" by ", rounded_dollars(filtered_data_current[selected_column + ' - MoM ($)'].values[0]))
-
-    st.write("HERE")
-    st.write(
-        alias, "'s ", selected_column, " portfoliio ", filtered_data_current[selected_column + ' - MoM Movement Direction'].values[0], "d ",
-        " by ", rounded_dollars_md(filtered_data_current[selected_column + ' - MoM ($)'].values[0]),
-        " from ", rounded_dollars_md(filtered_data_prior[selected_column].values[0]), " at ", prior_month.strftime('%d %B %Y'),
-        " to ", rounded_dollars_md(filtered_data_current[selected_column].values[0]), " at ", current_month.strftime('%d %B %Y'),
-        " in the previous month."
-    )
-
-    
-    return final_df
-    
-    
-
-    
-
-
-    # Update the graph and text based on the selected option
-    st.write('Filtered Data:')
-    st.write(filtered_data)
-
-# df_ranked=single_column_stats_fn(
-#         df=df_column,
-#         date_column=date_column,
-#         selected_column=selected_column,
-#         group_columns=group_by_columns,
-#         ranking_column='rank',
-#     )
+    return 0
