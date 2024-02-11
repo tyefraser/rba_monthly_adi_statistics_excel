@@ -73,7 +73,7 @@ def single_column_stats_fn(
         date_column,
         selected_column,
         group_columns,
-        ranking_column,
+        ranking_column='rank',
 ):
     logger.debug('\nRunning: single_column_stats_fn')
 
