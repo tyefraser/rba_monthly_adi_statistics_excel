@@ -1,26 +1,26 @@
 import streamlit as st
 import pandas as pd
-# import plotly.express as px
+import plotly.express as px
 import plotly as pt
 import altair as alt
 
 
-# def stacked_area_100_perc(
-#         df,
-#         date_column,
-#         category_column,
-#         selected_column,
-# ):
-#     fig = px.area(df, x=date_column, y=selected_column, color=category_column, 
-#                     title='100% Stacked Area Graph of Total Revenue by Company',
-#                     labels={date_column: 'Date', selected_column: selected_column, category_column: 'Company'},
-#                     category_orders={category_column: sorted(df[category_column].unique())}, # Ensure consistent color mapping
-#                     color_discrete_sequence=px.colors.qualitative.Set1) # Set color scheme
-# 
-#     fig.update_layout(yaxis=dict(tickformat=".0%"))  # Format y-axis as percentage
-# 
-#     # Display the plot using Streamlit
-#     st.plotly_chart(fig)
+def stacked_area_100_perc(
+        df,
+        date_column,
+        category_column,
+        selected_column,
+):
+    fig = px.area(df, x=date_column, y=selected_column, color=category_column, 
+                    title='100% Stacked Area Graph of Total Revenue by Company',
+                    labels={date_column: 'Date', selected_column: selected_column, category_column: 'Company'},
+                    category_orders={category_column: sorted(df[category_column].unique())}, # Ensure consistent color mapping
+                    color_discrete_sequence=px.colors.qualitative.Set1) # Set color scheme
+
+    fig.update_layout(yaxis=dict(tickformat=".0%"))  # Format y-axis as percentage
+
+    # Display the plot using Streamlit
+    st.plotly_chart(fig)
 
 
 
