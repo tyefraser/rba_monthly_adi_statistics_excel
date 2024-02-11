@@ -126,4 +126,4 @@ def rounded_dollars(dollars):
 
 def rounded_dollars_md(dollars):
     sign, dollars, scale = rounded_number(number = dollars)
-    return f'{sign}\$ {dollars} {scale}'
+    return f'{sign}\$&nbsp;{dollars}&nbsp;{scale}'

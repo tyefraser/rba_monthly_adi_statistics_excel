@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import numpy as np
+from datetime import datetime
 
 from utils import rounded_dollars, rounded_number, rounded_dollars_md
 from single_column_stats import single_column_stats_fn
@@ -231,6 +233,126 @@ def graph_selected_month(
 
     st.plotly_chart(fig, use_container_width=True)
 
+def graph_selected_col(
+        df,
+        category_column,
+        col_to_chart,
+        ordered_category_list=None,
+        show_xaxis_labels = True,
+):
+    if ordered_category_list == None:
+        ordered_category_list = df[category_column].tolist()
+
+    # Plot with Plotly Express
+    fig = px.bar(
+        df,
+        x=category_column,
+        y=col_to_chart,
+        title=f"{col_to_chart}",
+        color=category_column,
+        category_orders={category_column: ordered_category_list},  # Ensure custom order is applied
+        # color_discrete_map=colors,
+        height=800
+    )
+
+    # Optionally customize the layout
+    fig.update_layout(
+        xaxis_title=category_column,
+        yaxis_title=col_to_chart,
+        legend_title=category_column,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        showlegend=False,
+    )
+
+    if not show_xaxis_labels:
+        fig.update_xaxes(tickangle=45, tickmode='array', tickvals=[])
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+
+def date_to_date_comparison(
+        df,
+        date_column,
+        selected_date,
+        comparison_date,
+        selected_column,
+        category_column,
+        prefix = '',
+):
+    # Created padded varsiion of the prefix value
+    if prefix == '':
+        prefix_padded = ' '
+    else:
+        prefix_padded = ' ' + prefix + ' '
+
+    # df for teh selected dates
+    df_two_dates = df[df[date_column].isin([selected_date, comparison_date])]
+    df_two_dates.loc[df_two_dates[date_column] == selected_date, date_column] = 'selected'
+    df_two_dates.loc[df_two_dates[date_column] == comparison_date, date_column] = 'comparison'
+
+    # Pivot the DataFrame
+    pivot_df = df_two_dates.pivot_table(index=category_column, columns=date_column, values=selected_column, aggfunc='first')
+
+    # Reset the index to make 'category' a column again
+    pivot_df.reset_index(inplace=True)
+    
+    # Dollar Movements
+    dollar_movements_col_name = f"{selected_column} -{prefix_padded}Movement ($)"
+    pivot_df[dollar_movements_col_name] = pivot_df['selected'] - pivot_df['comparison']
+
+    # Dollar Direction
+    movement_direction_col_name = f"{selected_column} -{prefix_padded}Movement Direction"
+    pivot_df[movement_direction_col_name] = np.where(pivot_df[dollar_movements_col_name] >= 0, 'increase', 'decrease')
+
+    # Percentage Movements
+    percentage_movements_col_name = f"{selected_column} -{prefix_padded}Movement (%)"
+    pivot_df[percentage_movements_col_name] = (pivot_df[dollar_movements_col_name] / pivot_df['comparison']) * 100
+
+    # Percentage of market Movements
+    percentage_of_market_movements_col_name = f"{selected_column} -{prefix_padded}Movement as Percentage of Market(%)"
+    pivot_df[percentage_of_market_movements_col_name] = (pivot_df[dollar_movements_col_name] / pivot_df['comparison'].sum()) * 100
+
+    date_to_date_comparison_dict = {
+        'df': pivot_df,
+        'dollar_movements_col_name': dollar_movements_col_name,
+        'movements_direction_col_name': movement_direction_col_name,
+        'percentage_movements_col_name': percentage_movements_col_name,
+        'percentage_of_market_movements_col_name': percentage_of_market_movements_col_name,
+        'selected_date': selected_date,
+        'comparison_date': comparison_date,
+    }
+
+    return date_to_date_comparison_dict
+
+def point_txt(
+        alias,
+        category_column,
+        selected_category,
+        selected_column,
+        period_dict,
+        end = ".",
+):
+    period_category_df = period_dict['df'][period_dict['df'][category_column] == selected_category]
+    
+    # Month on Month Movements
+    st.write(
+        " - " +
+        alias, "'s ", selected_column, " portfoliio ", f"{period_category_df[period_dict['movements_direction_col_name']].values[0]}d ",
+        " by ",   rounded_dollars_md(period_category_df[period_dict['dollar_movements_col_name']].values[0]),
+        " from ", rounded_dollars_md(period_category_df['comparison'].values[0]), " at ", period_dict['comparison_date'].strftime('%d %B %Y'),
+        " to ",   rounded_dollars_md(period_category_df['selected'].values[0]), " at ", period_dict['selected_date'].strftime('%d %B %Y'),
+        end
+    )
+
+
+
 def tab_column_summary_content(
         df,
         aliases_dict,
@@ -284,7 +406,6 @@ def tab_column_summary_content(
         top_x_category_list = top_x_category_list,
         selected_column = selected_column,
     )
-    st.write(top_x_and_other_df)
 
     # Create default cetegory order - ordered list of category values including 'other' row
     ordered_category_list = ordered_category_list_fn(
@@ -296,10 +417,54 @@ def tab_column_summary_content(
         other_col = 'other',
         other_at_end = True,
     )
-    st.write(ordered_category_list)
 
     # Define colors for specific categories
     # colors = {'YourCategory1': 'color1', 'YourCategory2': 'color2'}  # Define your color mapping
+
+    # Month on Month data comparisons
+    mom_dict = date_to_date_comparison(
+        df=top_x_and_other_df,
+        date_column=date_column,
+        selected_date=selected_date,
+        comparison_date=prior_month,
+        selected_column=selected_column,
+        category_column=category_column,
+        prefix = "MoM",
+    )
+
+    # Year on Year data comparisons
+    yoy_dict = date_to_date_comparison(
+        df=top_x_and_other_df,
+        date_column=date_column,
+        selected_date=selected_date,
+        comparison_date=yoy_month,
+        selected_column=selected_column,
+        category_column=category_column,
+        prefix = "YoY",
+    )
+
+    # Key Points information
+    if alias == selected_category:
+        st.write(f'Key Points for {selected_category}:')
+    else:
+        st.write(f"Key Points for {selected_category} ({alias}) as at {selected_date.strftime('%d %B %Y')}:")
+    point_txt(
+        alias=alias,
+        category_column=category_column,
+        selected_category=selected_category,
+        selected_column=selected_column,
+        period_dict=mom_dict,
+        end = " in the previous month.",
+    )
+    point_txt(
+        alias=alias,
+        category_column=category_column,
+        selected_category=selected_category,
+        selected_column=selected_column,
+        period_dict=yoy_dict,
+        end = " in the previous year.",
+    )
+    
 
     # Graph current month balances
     graph_selected_month(
@@ -311,70 +476,27 @@ def tab_column_summary_content(
         ordered_category_list=ordered_category_list,
         show_xaxis_labels = True,
     )
-    
 
+    # Graph Month on Month data comparisons
+    graph_selected_col(
+        df=mom_dict['df'],
+        category_column=category_column,
+        col_to_chart = mom_dict['percentage_of_market_movements_col_name'],
+        ordered_category_list=ordered_category_list,
+        show_xaxis_labels = True,
+    )
 
-    
-##    # GPT
-##    top_x_and_other_df_current = top_x_and_other_df[top_x_and_other_df[date_column] == selected_date]
-##    top_x_and_other_df_current = top_x_and_other_df_current.sort_values(by=selected_column, ascending=False).copy()
-##    
-##    # Define colors for specific categories in the same way as matplotlib example
-##    #colors = {'YourCategory1': 'color1', 'YourCategory2': 'color2'}
-##
-##    # Plot with Plotly Express
-##    fig = px.bar(top_x_and_other_df_current, x=category_column, y=selected_column,
-##                title="Your Chart Title",
-##                color=category_column,  # This assigns different colors for each category
-##                # color_discrete_map=colors
-##    )  # This uses your custom color mapping
-##
-##    # Optionally customize the layout
-##    fig.update_layout(xaxis_title=category_column, yaxis_title=selected_column)
-##    fig.update_xaxes(categoryorder='total descending')  # This line is optional and for additional sorting
-##
-##    st.plotly_chart(fig, use_container_width=True)
-##
-##    st.bar_chart(
-##        data=top_x_and_other_df_current,
-##        x=category_column,
-##        y=selected_column,
-##        # color=None,
-##        # width=0,
-##        # height=0,
-##        # use_container_width=True
-##    )
-##    streamlit_column_graph(
-##        df=top_x_and_other_df_current,
-##        date_column=date_column,
-##        category_column=category_column,
-##        selected_column=selected_column,
-##        display_data = False
-##    )
+    # Graph Year on Year data comparisons
+    graph_selected_col(
+        df=yoy_dict['df'],
+        category_column=category_column,
+        col_to_chart = yoy_dict['percentage_of_market_movements_col_name'],
+        ordered_category_list=ordered_category_list,
+        show_xaxis_labels = True,
+    )
 
-
-    # # Insert containers separated into tabs:
-    # market, individual = st.tabs(["Market", "Individual Bank"])
-    # # Tab 1 content
-    # with market:
-    #     streamlit_column_graph(
-    #         df=final_df,
-    #         date_column=date_column,
-    #         category_column=category_column,
-    #         selected_column=selected_column,
-    #         display_data = True
-    #     )
-    # with individual:
-    #     streamlit_column_graph(
-    #         df=final_df,
-    #         date_column=date_column,
-    #         category_column=category_column,
-    #         selected_column=selected_column,
-    #         display_data = True
-    #     )
 
     # Generate Key Points
-    st.write(current_month)
     st.write(prior_month)
     filtered_data_current = df_column[(df_column['Period'] == current_month) & (df_column[category_column] == selected_category)]
     filtered_data_prior = df_column[(df_column['Period'] == prior_month) & (df_column[category_column] == selected_category)]
@@ -383,37 +505,6 @@ def tab_column_summary_content(
 
     movement_txt = str(rounded_dollars(filtered_data_current[selected_column + ' - MoM ($)'].values[0]))
     sign, number, scale =rounded_number(filtered_data_current[selected_column + ' - MoM ($)'].values[0])
-    point_tst_1 = (
-        f"{alias}'s {selected_column} portfoliio {filtered_data_current[selected_column + ' - MoM Movement Direction'].values[0]}d " +
-        f" by {sign}${number} {scale} "
-    )
-    st.write(point_tst_1)
-    st.write(f"Test Latex issue \$ issue? \$ point_tst_1")
-
-    sign, number, scale = rounded_number(filtered_data_prior[selected_column].values[0])
-    point_tst_2 = (
-        f"from {rounded_dollars(filtered_data_prior[selected_column].values[0])} at {prior_month.strftime('%d %B %Y')}"
-        # f" from {sign}${number} {scale} at {prior_month.strftime('%d %B %Y')}"
-    )
-    st.write(point_tst_2)
-
-    point_tst_3 = (
-        f" to {rounded_dollars(filtered_data_current[selected_column].values[0])} at {current_month.strftime('%d %B %Y')} in the previous month."
-    )
-    st.write(point_tst_3)
-
-    st.text(str(point_tst_1) + str(point_tst_2) + str(point_tst_3))
-    st.markdown(str(point_tst_1) + str(point_tst_2) + str(point_tst_3))
-
-    
-
-            # f"from {rounded_dollars(filtered_data_prior[selected_column].values[0])} at {prior_month.strftime('%d %B %Y')}" +
-        # f" to {rounded_dollars(filtered_data_current[selected_column].values[0])} at {current_month.strftime('%d %B %Y')} in the previous month."
-
-
-    # direction_txt = str(filtered_data_current[selected_column + ' - MoM Movement Direction'].values[0])
-    prior_amount_txt = str(rounded_dollars(filtered_data_prior[selected_column].values[0]))
-    current_amount_txt = str(rounded_dollars(filtered_data_current[selected_column].values[0]))
 
 
     st.write(" by ", rounded_dollars(filtered_data_current[selected_column + ' - MoM ($)'].values[0]))
@@ -428,42 +519,6 @@ def tab_column_summary_content(
     )
 
     
-    st.write(f'movement_txt:{movement_txt}')
-    st.write(f'direction_txt: {direction_txt}')
-    st.write(f'prior_amount_txt:{prior_amount_txt}')
-    st.write(f'current_amount_txt:{current_amount_txt}')
-
-    point_movements = (
-        alias + "'s " + selected_column + " portfoliio " + direction_txt + "d " +
-        " by " + str(movement_txt) +
-        " from " + prior_amount_txt + " at " + prior_month.strftime('%d %B %Y') +
-        " to " + current_amount_txt + " at " + current_month.strftime('%d %B %Y') +
-        " in the previous month."
-    )
-    st.write(point_movements)
-    st.markdown(point_movements, unsafe_allow_html=True)
-    st.markdown(point_movements)
-
-
-    point_movements = (
-        alias + "'s " + selected_column + " portfoliio " + filtered_data_current[selected_column + ' - MoM Movement Direction'].values[0] + "d " +
-        " by " + rounded_dollars(filtered_data_current[selected_column + ' - MoM ($)'].values[0]) +
-        " from " + rounded_dollars(filtered_data_prior[selected_column].values[0]) + " at " + prior_month.strftime('%d %B %Y') +
-        " to " + rounded_dollars(filtered_data_current[selected_column].values[0]) + " at " + current_month.strftime('%d %B %Y') +
-        " in the previous month."
-    )
-
-    # Display the string using st.write()
-    st.write("""
-        Key statistics:
-        - """ + point_movements + """
-        - Business Banking is a key part of the banking sector
-        - Business Banking is a key part of the banking sector
-        - Business Banking is a key part of the banking sector
-    """)
-    
-    
-
     return final_df
     
     
