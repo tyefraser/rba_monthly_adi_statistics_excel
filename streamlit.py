@@ -9,11 +9,17 @@ from tabs.tab1 import tab1_content
 from tabs.tab_business_banking import tab_business_banking_content
 from tabs.tab_column_summary import tab_column_summary_content
 
+# Set page width
+st.set_page_config(layout="wide")
+
 # Get data
 df = data_generator()
 
 # Get aliases from yaml
 aliases_dict = read_yaml(file_path = 'aliases.yaml')
+
+# Set colour scheme
+color_discrete_map = read_yaml(file_path = 'color_discrete_map.yaml')
 
 st.write("""
     # APRA - Monthly ADI Statistics (MADIS)
@@ -27,13 +33,14 @@ st.write(f"Reporting date: {reporting_date_str}")
 
 
 # Insert containers separated into tabs:
-tab1, tab2, tab3 = st.tabs(["Tab 1", "Business Banking", "Test"])
+tab1, tab2, tab3 = st.tabs(["Account Statistics", "Market Summaries", "How To Use"])
 
 # Tab 1 content
 with tab1:
     tab_column_summary_content(
         df=df,
         aliases_dict=aliases_dict['aliases'],
+        color_discrete_map=color_discrete_map,
     )
 
 # Tab 2 content

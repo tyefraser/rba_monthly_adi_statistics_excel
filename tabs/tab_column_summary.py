@@ -1,45 +1,17 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-# import plotly as pt
 import numpy as np
-from datetime import datetime
 
-from utils import rounded_dollars, rounded_number, rounded_dollars_md
-from single_column_stats import single_column_stats_fn
-from streamlit_utils import stacked_area_100_perc, streamlit_column_graph
+from utils import rounded_dollars_md
+from streamlit_utils import graph_selected_col, date_selection
 
-def date_selection(
-        df,
-        date_column
-):
-    # Extract unique values from the column for dropdown options
-    complete_dates_list = sorted(list(df[date_column].unique()))
-    
-    # max date from df
-    max_date = complete_dates_list[-1]
 
-    # Create a dropdown widget with the unique values from the column
-    selected_date = st.selectbox('Date', complete_dates_list, index=complete_dates_list.index(max_date))
-
-    # Only keep data to the selected date or before
-    df_dated = df[df[date_column] <= selected_date]
-
-    # Extract dates from the dated df
-    filtered_dates_list = sorted(list(df_dated[date_column].unique()))
-
-    # Get prior month and yoy dates
-    prior_month = filtered_dates_list[-2]
-    yoy_month = filtered_dates_list[-13]
-
-    return df_dated, selected_date, prior_month, yoy_month
 
 def column_selection(
         df,
         date_column,
         group_by_columns,
         default_column,
-        
 ):
     # Extract unique values from the column for dropdown options    
     columns_list = [col for col in list(df.columns) if col not in group_by_columns]
@@ -93,7 +65,7 @@ def top_x_selection(
     # current_month_df = df_ranked[df_ranked[date_column] == selected_date]
 
     # Filter the data based on the selected option
-    top_x_category_list = current_df.iloc[1:(top_x_value+1) , :][category_column].tolist()
+    top_x_category_list = current_df.iloc[0:(top_x_value+1) , :][category_column].tolist()    
 
     # Add selected category to list incase it isnt present
     top_x_category_list.append(selected_category)
@@ -178,104 +150,6 @@ def ordered_category_list_fn(
     
     return ordered_category_list
 
-def graph_selected_month(
-    df,
-    date_column,
-    selected_date,
-    selected_column,
-    category_column,
-    ordered_category_list=None,
-    show_xaxis_labels = True,
-):
-
-    if ordered_category_list == None:
-        ordered_category_list = ordered_category_list_fn(
-            df = df,
-            date_column=date_column,
-            selected_date=selected_date,
-            selected_column=selected_column,
-            category_column=category_column,
-            other_col = 'other',
-            other_at_end = True,
-        )
-    
-    # Graph current month df
-    df_selected_date = df[df[date_column] == selected_date]
-
-    # Plot with Plotly Express
-    fig = px.bar(
-        df_selected_date,
-        x=category_column,
-        y=selected_column,
-        title=f"{selected_column} Month End Balances",
-        color=category_column,
-        category_orders={category_column: ordered_category_list},  # Ensure custom order is applied
-        # color_discrete_map=colors,
-        height=800
-    )
-
-    # Optionally customize the layout
-    fig.update_layout(
-        xaxis_title=category_column,
-        yaxis_title=selected_column,
-        legend_title=category_column,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
-        showlegend=False,
-    )
-
-    if not show_xaxis_labels:
-        fig.update_xaxes(tickangle=45, tickmode='array', tickvals=[])
-
-    st.plotly_chart(fig, use_container_width=True)
-
-def graph_selected_col(
-        df,
-        category_column,
-        col_to_chart,
-        ordered_category_list=None,
-        show_xaxis_labels = True,
-):
-    if ordered_category_list == None:
-        ordered_category_list = df[category_column].tolist()
-
-    # Plot with Plotly Express
-    fig = px.bar(
-        df,
-        x=category_column,
-        y=col_to_chart,
-        title=f"{col_to_chart}",
-        color=category_column,
-        category_orders={category_column: ordered_category_list},  # Ensure custom order is applied
-        # color_discrete_map=colors,
-        height=800
-    )
-
-    # Optionally customize the layout
-    fig.update_layout(
-        xaxis_title=category_column,
-        yaxis_title=col_to_chart,
-        legend_title=category_column,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
-        showlegend=False,
-    )
-
-    if not show_xaxis_labels:
-        fig.update_xaxes(tickangle=45, tickmode='array', tickvals=[])
-
-    st.plotly_chart(fig, use_container_width=True)
-
 
 
 def date_to_date_comparison(
@@ -352,7 +226,62 @@ def point_txt(
         end
     )
 
+def colum_details_dollars(
+        df,
+        reference_col
+):
+    # Provide details
+    st.write(f" - The Net Total for {reference_col} is {rounded_dollars_md(df[reference_col].sum())}")
+    st.write(f" - The Total Positive {reference_col} values are {rounded_dollars_md(df[df[reference_col] >= 0][reference_col].sum())}" +
+                f" (Negative:{rounded_dollars_md(df[df[reference_col] < 0][reference_col].sum())})")
 
+def graph_movements(
+        movement_dict,
+        category_column,
+        ordered_category_list,
+        color_discrete_map,
+):
+    
+    # Dollars
+    st.write("## Dollar Movements")
+    st.write("Total Dollar Movements over the period")
+    graph_selected_col(
+        df=movement_dict['df'],
+        category_column=category_column,
+        reference_col = movement_dict['dollar_movements_col_name'],
+        ordered_category_list=ordered_category_list,
+        show_xaxis_labels = True,
+        x_gridcolor='Grey',
+
+        color_discrete_map=color_discrete_map,
+    )
+
+    # Period on Period Movements
+    st.write("## Period on Period Movements (%)")
+    st.write("Movements over the period as a percentage of prior total")
+    graph_selected_col(
+        df=movement_dict['df'],
+        category_column=category_column,
+        reference_col = movement_dict['percentage_movements_col_name'],
+        ordered_category_list=ordered_category_list,
+        show_xaxis_labels = True,
+        x_tickformat = ".1%",
+        x_gridcolor='Grey',
+        color_discrete_map=color_discrete_map,
+    )
+
+    st.write("## Movement / Market movement (%)")
+    st.write("Movements as a percentage of the total market movement")
+    graph_selected_col(
+        df=movement_dict['df'],
+        category_column=category_column,
+        reference_col = movement_dict['percentage_of_market_movements_col_name'],
+        ordered_category_list=ordered_category_list,
+        show_xaxis_labels = True,
+        x_tickformat = ".1%",
+        x_gridcolor='Grey',
+        color_discrete_map=color_discrete_map,
+    )
 
 def tab_column_summary_content(
         df,
@@ -361,16 +290,32 @@ def tab_column_summary_content(
         group_columns = ['ABN', 'Institution Name'],
         category_column = 'Institution Name',
         default_category = 'Macquarie Bank Limited',
-        default_column = 'Business Loans'
+        default_column = 'Business Loans',
+        color_discrete_map = None,
 ):
     # Set the columns to group by
     group_by_columns = [date_column] + group_columns
 
+    # Selection Section
+    st.write("# Data Selection")
+    st.write("""
+             In this section you can select filters to apply to the data. For example you can:
+              - Select the 'as at' date you want to analyse
+              - Select the specific data point to analyse
+              - Specify the bank of interest
+              - Indicate how many top banks to include within the graphs (including the bank of interest)
+             
+             Please make your selections below:
+             """)
+
     # Filter for the selected date
-    df_dated, selected_date, prior_month, yoy_month = date_selection(
+    complete_dates_list, selected_date, df_dated, filtered_dates_list = date_selection(
         df=df,
         date_column=date_column,
     )
+    # Get prior month and yoy dates
+    prior_month = filtered_dates_list[-2]
+    yoy_month = filtered_dates_list[-13]
 
     # Filter for the selected Column
     df_column, selected_column = column_selection(
@@ -445,6 +390,8 @@ def tab_column_summary_content(
     )
 
     # Key Points information
+    st.markdown("___")
+    st.markdown("# Key Points:")
     if alias == selected_category:
         st.write(f'Key Points for {selected_category}:')
     else:
@@ -468,32 +415,42 @@ def tab_column_summary_content(
     
 
     # Graph current month balances
-    graph_selected_month(
-        df=top_x_and_other_df,
-        date_column=date_column,
-        selected_date=selected_date,
-        selected_column=selected_column,
+    st.markdown("___")
+    st.markdown(f"# {selected_column} as at {selected_date.strftime('%d %B %Y')}")  
+    df_selected_date_to_graph = top_x_and_other_df[top_x_and_other_df[date_column] == selected_date]
+    graph_selected_col(
+        df=df_selected_date_to_graph,
         category_column=category_column,
+        reference_col = selected_column,
         ordered_category_list=ordered_category_list,
         show_xaxis_labels = True,
+        x_gridcolor='Grey',
+        color_discrete_map=color_discrete_map,
     )
+    colum_details_dollars(
+        df=df_selected_date_to_graph,
+        reference_col=selected_column,
+    )
+    
 
     # Graph Month on Month data comparisons
-    graph_selected_col(
-        df=mom_dict['df'],
+    st.markdown("___")
+    st.markdown(f"# {selected_column} Month on Month Movements")
+    graph_movements(
+        movement_dict=mom_dict,
         category_column=category_column,
-        col_to_chart = mom_dict['percentage_of_market_movements_col_name'],
         ordered_category_list=ordered_category_list,
-        show_xaxis_labels = True,
+        color_discrete_map=color_discrete_map,
     )
 
     # Graph Year on Year data comparisons
-    graph_selected_col(
-        df=yoy_dict['df'],
+    st.markdown("___")
+    st.markdown(f"# {selected_column} Year on Year Movements")
+    graph_movements(
+        movement_dict=yoy_dict,
         category_column=category_column,
-        col_to_chart = yoy_dict['percentage_of_market_movements_col_name'],
         ordered_category_list=ordered_category_list,
-        show_xaxis_labels = True,
+        color_discrete_map=color_discrete_map,
     )
 
     return 0
