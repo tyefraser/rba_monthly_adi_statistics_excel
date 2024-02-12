@@ -169,7 +169,7 @@ def date_to_date_comparison(
 
     # df for teh selected dates
     df_two_dates = df[df[date_column].isin([selected_date, comparison_date])]
-    df_two_dates.loc[df_two_dates[date_column] == selected_date, date_column] = 'selected'
+    df_two_dates.loc[df_two_dates[date_column] == selected_date, date_column] = selected_column
     df_two_dates.loc[df_two_dates[date_column] == comparison_date, date_column] = 'comparison'
 
     # Pivot the DataFrame
@@ -180,7 +180,7 @@ def date_to_date_comparison(
     
     # Dollar Movements
     dollar_movements_col_name = f"{selected_column} -{prefix_padded}Movement ($)"
-    pivot_df[dollar_movements_col_name] = pivot_df['selected'] - pivot_df['comparison']
+    pivot_df[dollar_movements_col_name] = pivot_df[selected_column] - pivot_df['comparison']
 
     # Dollar Direction
     movement_direction_col_name = f"{selected_column} -{prefix_padded}Movement Direction"
@@ -188,13 +188,14 @@ def date_to_date_comparison(
 
     # Percentage Movements
     percentage_movements_col_name = f"{selected_column} -{prefix_padded}Movement (%)"
-    pivot_df[percentage_movements_col_name] = (pivot_df[dollar_movements_col_name] / pivot_df['comparison']) * 100
+    pivot_df[percentage_movements_col_name] = (pivot_df[dollar_movements_col_name] / pivot_df['comparison']) # * 100
 
     # Percentage of market Movements
     percentage_of_market_movements_col_name = f"{selected_column} -{prefix_padded}Movement as Percentage of Market(%)"
-    pivot_df[percentage_of_market_movements_col_name] = (pivot_df[dollar_movements_col_name] / pivot_df['comparison'].sum()) * 100
+    pivot_df[percentage_of_market_movements_col_name] = (pivot_df[dollar_movements_col_name] / pivot_df['comparison'].sum()) # * 100
 
     date_to_date_comparison_dict = {
+        'prefix': prefix,
         'df': pivot_df,
         'dollar_movements_col_name': dollar_movements_col_name,
         'movements_direction_col_name': movement_direction_col_name,
@@ -222,18 +223,27 @@ def point_txt(
         alias, "'s ", selected_column, " portfoliio ", f"{period_category_df[period_dict['movements_direction_col_name']].values[0]}d ",
         " by ",   rounded_dollars_md(period_category_df[period_dict['dollar_movements_col_name']].values[0]),
         " from ", rounded_dollars_md(period_category_df['comparison'].values[0]), " at ", period_dict['comparison_date'].strftime('%d %B %Y'),
-        " to ",   rounded_dollars_md(period_category_df['selected'].values[0]), " at ", period_dict['selected_date'].strftime('%d %B %Y'),
+        " to ",   rounded_dollars_md(period_category_df[selected_column].values[0]), " at ", period_dict['selected_date'].strftime('%d %B %Y'),
         end
     )
+
+def escape_dollar_signs(text):
+    # Escaping all dollar signs for Markdown and avoiding HTML entities
+    return text.replace("$", "\\$").replace("\\\\$", "\\$")
 
 def colum_details_dollars(
         df,
         reference_col
 ):
     # Provide details
-    st.write(f" - The Net Total for {reference_col} is {rounded_dollars_md(df[reference_col].sum())}")
-    st.write(f" - The Total Positive {reference_col} values are {rounded_dollars_md(df[df[reference_col] >= 0][reference_col].sum())}" +
-                f" (Negative:{rounded_dollars_md(df[df[reference_col] < 0][reference_col].sum())})")
+    st.markdown(escape_dollar_signs(
+        f" - The Net Total for {reference_col} is {rounded_dollars_md(df[reference_col].sum())}"
+    ))
+    movements_txt = (
+        f" - The Total Positive {reference_col} values are {rounded_dollars_md(df[df[reference_col] >= 0][reference_col].sum())}" +
+        f" (Negative:{rounded_dollars_md(df[df[reference_col] < 0][reference_col].sum())})"
+    )
+    st.markdown(escape_dollar_signs(movements_txt))    
 
 def graph_movements(
         movement_dict,
@@ -436,6 +446,10 @@ def tab_column_summary_content(
     # Graph Month on Month data comparisons
     st.markdown("___")
     st.markdown(f"# {selected_column} Month on Month Movements")
+    colum_details_dollars(
+        df=mom_dict['df'],
+        reference_col=mom_dict['dollar_movements_col_name'],
+    )
     graph_movements(
         movement_dict=mom_dict,
         category_column=category_column,
@@ -446,6 +460,10 @@ def tab_column_summary_content(
     # Graph Year on Year data comparisons
     st.markdown("___")
     st.markdown(f"# {selected_column} Year on Year Movements")
+    colum_details_dollars(
+        df=yoy_dict['df'],
+        reference_col=yoy_dict['dollar_movements_col_name'],
+    )
     graph_movements(
         movement_dict=yoy_dict,
         category_column=category_column,

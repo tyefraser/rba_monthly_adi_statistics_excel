@@ -45,7 +45,7 @@ with tab1:
 
 # Tab 2 content
 with tab2:
-    st.write("This is tab 3 content")
+    st.write("Under construction.")
     # tab_business_banking_content(
     #     bb_df=data_dict['bb_df'],
     #     aliases_dict=aliases_dict['aliases'],
@@ -53,5 +53,5 @@ with tab2:
 
 # Tab 3 content
 with tab3:
-    st.write("This is tab 3 content")
+    st.write("Under construction.")
     
