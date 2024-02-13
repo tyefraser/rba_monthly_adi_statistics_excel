@@ -43,7 +43,7 @@ def read_and_process_data(
     return df
 
 
-def data_generator(
+def data_loader(
         file_name: str = 'data/Monthly authorised deposit-taking institution statistics back-series March 2019 - December 2023.xlsx',
         sheet_name: str = 'Table 1',
         skiprows: int = 1,
