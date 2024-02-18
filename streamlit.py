@@ -134,10 +134,10 @@ with tab1:
      
 ## 
 # Tab 3 content
+close_log_handlers()
 with tab3:
     tab_about(
         dfs_dict,
         file_name,
     )
 
-close_log_handlers()
