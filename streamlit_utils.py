@@ -4,26 +4,6 @@ import plotly.express as px
 import plotly as pt
 import altair as alt
 
-def date_selection(
-        df,
-        date_column
-):
-    # Extract unique values from the column for dropdown options
-    complete_dates_list = sorted(list(df[date_column].unique()), reverse=True)
-    
-    # max date from df
-    max_date = complete_dates_list[0]
-
-    # Create a dropdown widget with the unique values from the column
-    selected_date = st.selectbox('Date', complete_dates_list, index=complete_dates_list.index(max_date))
-
-    # Only keep data to the selected date or before
-    df_dated = df[df[date_column] <= selected_date]
-
-    # Extract dates from the dated df
-    filtered_dates_list = sorted(list(df_dated[date_column].unique()))
-
-    return complete_dates_list, selected_date, df_dated, filtered_dates_list
 
 def graph_selected_col(
         df,

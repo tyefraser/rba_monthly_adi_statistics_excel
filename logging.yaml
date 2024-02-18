@@ -1,0 +1,32 @@
+version: 1
+disable_existing_loggers: False
+formatters:
+  simple:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  detailed:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(lineno)d - %(message)s'
+handlers:
+  info_file_handler:
+    class: logging.FileHandler
+    level: INFO
+    formatter: simple
+    filename: logs/info.log
+    encoding: 'utf8'
+  detailed_file_handler:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: logs/detailed.log
+    encoding: 'utf8'
+loggers:
+  info_logger:
+    level: INFO
+    handlers: [info_file_handler]
+    propagate: no
+  detailed_logger:
+    level: DEBUG
+    handlers: [detailed_file_handler]
+    propagate: no
+root:
+  level: DEBUG
+  handlers: [info_file_handler, detailed_file_handler]

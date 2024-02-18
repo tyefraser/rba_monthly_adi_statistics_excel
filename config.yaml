@@ -1,15 +1,12 @@
-# Set required column data types
-column_typing_dict:
-  date: ['Period']
-  str: ['ABN', 'Institution Name']
-  skip_cols: ~
-  else_cols_as_type: 'float'
-column_adjustments_dict:
-  dollars_conversion:
-    all_but: ['Period', 'ABN', 'Institution Name']
-    ordered_adjustments:
-      multiply: 1000000
-expected_columns_list: [
+# File URL
+# TO DO:
+# url_path:
+
+# File Loading
+file_loading_details:
+  sheet_name: 'Table 1'
+  skiprows: 1
+  expected_columns_list: [
   'Period',
   'ABN',
   'Institution Name',
@@ -41,6 +38,19 @@ expected_columns_list: [
   'Deposits by community service organisations',
   'Total residents deposits',
 ]
+
+# Set required column data types
+column_typing_dict:
+  date: ['Period']
+  str: ['ABN', 'Institution Name']
+  skip_cols: ~
+  else_cols_as_type: 'float'
+column_adjustments_dict:
+  dollars_conversion:
+    all_but: ['Period', 'ABN', 'Institution Name']
+    ordered_adjustments:
+      multiply: 1000000
+
 
 calculated_columns:
   'Business Loans': [
