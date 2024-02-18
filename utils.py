@@ -194,6 +194,20 @@ def period_ago(months_ago):
             period_txt = f"{int(months_ago)} months"
     return period_txt
 
+def period_ago_prefix(months_ago):
+    if months_ago == 0:
+        prefix_txt = 'current month'
+    elif months_ago == 1:
+        prefix_txt = 'MoM'
+    elif (months_ago / 12) == 1:
+        prefix_txt = 'YoY'
+    elif (months_ago % 12) == 0:
+        yrs = months_ago / 12
+        prefix_txt = f"{int(yrs)} years"
+    else:
+        prefix_txt = f"{int(months_ago)} months"
+    return prefix_txt
+
 def position_s_movement(position_movement):
     if position_movement == 1:
         text = 'position'

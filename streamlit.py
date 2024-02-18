@@ -109,7 +109,8 @@ descriptions_dict = generate_descriptions(
 )
 
 # Insert containers separated into tabs:
-tab1, tab2, tab3 = st.tabs(["Account Statistics", "Market Summaries", "About"])
+tab1, tab3 = st.tabs(["Account Statistics", "About"])
+# tab1, tab2, tab3 = st.tabs(["Account Statistics", "Market Summaries", "About"])
 
 # Tab 1 content
 with tab1:
@@ -120,11 +121,12 @@ with tab1:
         selected_date = selected_date,
         descriptions_dict = descriptions_dict,
         aliases_dict = aliases_dict,
+        details_dicts = details_dicts,
     )
 
 # Tab 2 content
-with tab2:
-    st.write("Under construction.")
+## with tab2:
+##     st.write("Under construction.")
 ##     # tab_aggregate_content(
 ##     #     df=dfs_dict['original'],
 ##     #     selected_date=selections_dict['selected_date'],

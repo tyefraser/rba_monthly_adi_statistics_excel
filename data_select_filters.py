@@ -14,6 +14,9 @@ def date_selection(
     # Extract unique values from the column for dropdown options
     complete_dates_list = sorted(list(df[date_column].unique()), reverse=True)
 
+    # Convert to datetime.datetime object
+    complete_dates_list = pd.to_datetime(complete_dates_list).to_pydatetime()
+
     # Convet list to strings to present in list
     complete_dates_list_str = [
         timestamp.strftime('%Y %B %d') for timestamp in complete_dates_list]

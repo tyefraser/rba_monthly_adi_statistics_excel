@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from utils import period_ago, get_months_ago_list
+from utils import period_ago, get_months_ago_list, period_ago_prefix
 
 def market_positions(
         df,
@@ -262,6 +262,7 @@ def get_date_details(
         if no_months >= (months_ago+1):
             date_details.update({f'date_{months_ago}_months_ago': date_details['mom_dates_list'][months_ago]})
             date_details.update({f'date_{months_ago}_wording': period_ago(months_ago)})
+            date_details.update({f'date_{months_ago}_col_prefix': period_ago_prefix(months_ago)})
 
     return date_details
 
@@ -392,20 +393,15 @@ def filter_data(
         current_date = details_dicts['mom_dates_list'][0]
         reference_date = details_dicts['mom_dates_list'][months_ago]
 
-        dfs_dict[details_dicts[f'date_{months_ago}_wording']] = date_to_date_comparison(
+        # Generate Chart
+        dfs_dict[details_dicts[f'date_{months_ago}_col_prefix']] = date_to_date_comparison(
             df=top_x_df,
             date_column=date_column,
             selected_date=current_date,
             comparison_date=reference_date,
             selected_column=selected_column,
             category_column=category_column,
-            prefix = details_dicts[f'date_{months_ago}_wording'].capitalize(),
+            prefix = details_dicts[f'date_{months_ago}_col_prefix'],
         )
-        
-    # months_ago_list = get_months_ago_list(
-    #     df = dfs_dict['top_x_df_dict']['df'],
-    #     date_column = date_column,
-    # )
-    # print(months_ago_list)
 
     return dfs_dict, details_dicts

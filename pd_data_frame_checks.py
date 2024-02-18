@@ -43,6 +43,8 @@ def convert_columns_by_type(df, cols_list, cols_type):
         df[cols_list] = df[cols_list].astype(float)
     else:
         raise ValueError('Unexpected data type. Supported types are: "date", "str", "float".')
+    
+    return df
 
 def convert_columns_dict_type_allocation(df, col_types_dict):
     """
@@ -70,13 +72,13 @@ def convert_columns_dict_type_allocation(df, col_types_dict):
             continue
         # Columns to be converted with a common type
         elif key == 'else_cols_as_type':
-            convert_columns_by_type(
+            df = convert_columns_by_type(
                 df=df,
                 cols_list=else_cols_list,
                 cols_type=cols  # assuming else_cols_as_type contains only one data type
             )
         else:
-            convert_columns_by_type(
+            df = convert_columns_by_type(
                 df=df,
                 cols_list=cols,
                 cols_type=key

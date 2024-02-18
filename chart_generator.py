@@ -10,12 +10,16 @@ def chart_selected_col_bar(
         df,
         category_column,
         reference_col,
+        title = None,
         ordered_category_list=None,
         show_xaxis_labels = True,
         x_tickformat = None,
         x_gridcolor = None,
         color_discrete_map=None,
 ):
+    if title == None:
+        title = reference_col
+    
     if ordered_category_list == None:
         ordered_category_list = df[category_column].tolist()
 
@@ -32,7 +36,7 @@ def chart_selected_col_bar(
         x=reference_col,
         y=category_column,
         orientation='h',
-        title=f"{reference_col}",
+        title=title,
         color=category_column,
         text=df['chart_txt'],
         category_orders={category_column: ordered_category_list},  # Ensure custom order is applied
@@ -131,12 +135,48 @@ def generate_charts(
         df = top_x_df_current,
         category_column = category_column,
         reference_col = f'{selected_column}',
+        title = f'{selected_column}',
         ordered_category_list= details_dicts['ordered_category_list'],
         show_xaxis_labels = True,
         x_tickformat = None,
         x_gridcolor='Grey',
         color_discrete_map= color_discrete_map,
     )
+
+    # Movements charts
+    for months_ago in details_dicts['months_ago_list']:
+        title = details_dicts[f'date_{months_ago}_col_prefix']
+        if title in dfs_dict.keys():
+            # get df
+            movements_df = dfs_dict[title]['df']
+            
+            # Dollar Movements
+            dollar_movements_col = dfs_dict[title]['dollar_movements_col_name']
+            movements_df.loc[:, 'chart_txt'] = movements_df[dollar_movements_col].apply(rounded_dollars)
+            charts_dict[dollar_movements_col] = chart_selected_col_bar(
+                df = movements_df,
+                category_column = category_column,
+                reference_col = dollar_movements_col,
+                ordered_category_list= details_dicts['ordered_category_list'],
+                show_xaxis_labels = True,
+                x_tickformat = None,
+                x_gridcolor='Grey',
+                color_discrete_map= color_discrete_map,
+            )
+
+            # Percentage Movements
+            percentage_movements_col = dfs_dict[title]['percentage_movements_col_name']
+            movements_df.loc[:, 'chart_txt'] = movements_df[percentage_movements_col].apply(lambda x: f"{x * 100:.1f} %")
+            charts_dict[percentage_movements_col] = chart_selected_col_bar(
+                df = movements_df,
+                category_column = category_column,
+                reference_col = percentage_movements_col,
+                ordered_category_list= details_dicts['ordered_category_list'],
+                show_xaxis_labels = True,
+                x_tickformat = None,
+                x_gridcolor='Grey',
+                color_discrete_map= color_discrete_map,
+            )
 
     return charts_dict
 
