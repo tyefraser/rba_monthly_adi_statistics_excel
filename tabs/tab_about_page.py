@@ -99,14 +99,14 @@ def tab_about(
 
     # INFO Logs
     download_file(
-        file_path = "logs\info.log",
+        file_path = "logs/info.log",
         label = 'Download INFO logs',
         mime = "text/plain",
     )
 
     # Details Logs
     download_file(
-        file_path = "logs\detailed.log",
+        file_path = "logs/detailed.log",
         label = 'Download DEBUG logs',
         mime = "text/plain",
     )
