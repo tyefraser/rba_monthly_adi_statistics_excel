@@ -5,7 +5,6 @@ import plotly as pt
 import altair as alt
 
 
-
 def graph_selected_col(
         df,
         category_column,

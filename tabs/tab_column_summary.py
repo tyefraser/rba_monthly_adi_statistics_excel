@@ -61,7 +61,6 @@ def graph_movements(
         ordered_category_list=ordered_category_list,
         show_xaxis_labels = True,
         x_gridcolor='Grey',
-
         color_discrete_map=color_discrete_map,
     )
 
@@ -176,5 +175,13 @@ def tab_column_summary_content(
         ordered_category_list=ordered_category_list,
         color_discrete_map=color_discrete_map,
     )
+
+    # MoM mobements
+    options = st.multiselect(
+        f'Select {category_column} to include',
+        top_x_and_other_df[category_column],
+        selected_category,
+    )
+    st.write(options)
 
     return 0

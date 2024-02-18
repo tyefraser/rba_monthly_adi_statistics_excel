@@ -1,157 +1,110 @@
 import pandas as pd
-import streamlit as st
 import numpy as np
 
-def date_selection(
+from utils import period_ago, get_months_ago_list
+
+def market_positions(
         df,
         date_column,
-        col1,
+        category_column,
+        selected_column
 ):
-    # Extract unique values from the column for dropdown options
-    complete_dates_list = sorted(list(df[date_column].unique()), reverse=True)
+
+    df_to_rank = df[[date_column, category_column, selected_column]]
+    market_position_df = pd.DataFrame()
+    for date in df_to_rank[date_column].unique():
+        # Generate rankings df
+        rankings_df = df_to_rank[df_to_rank[date_column] == date][[date_column, category_column, selected_column]].sort_values(by=selected_column, ascending=False)
+        rankings_df['Rank'] = rankings_df[selected_column].rank(method='max', ascending=False).astype(int)
+        rankings_df['Market Share'] = rankings_df[selected_column] / rankings_df[selected_column].sum()
+
+        # Concatengate to the complete market_position_df
+        if len(market_position_df) == 0:
+            market_position_df = rankings_df.copy()
+        else:
+            market_position_df = pd.concat([market_position_df, rankings_df], ignore_index=True)
+    return market_position_df
+
+def calculate_movement_cols(
+        df,
+        date_column,
+        category_column,
+        selected_column,
+        dollar_movements: str = None,
+        percentage_movements: str = None,
+        timing: str = '',
+):
+    """
+    Calculate the movement in business loans for each bank over the periods.
     
-    # max date from df
-    max_date = complete_dates_list[0]
+    Parameters:
+    - df: A pandas DataFrame with columns date_column, category_column, and selected_column.
+    
+    Returns:
+    - A pandas DataFrame with an additional 'Movement' column showing the movement in the selected_column columns.
+    """
 
-    # Create a dropdown widget with the unique values from the column
-    # Place a selectbox in each column
-    with col1:
-        selected_date = st.selectbox('Date', complete_dates_list, index=complete_dates_list.index(max_date))
+    # Ensure date_column is a datetime column
+    df[date_column] = pd.to_datetime(df[date_column])
+    
+    # Sort the DataFrame by category_column and date_column
+    df_sorted = df.sort_values(by=[category_column, date_column])
+    
+    # Calculate the movement in selected_column for each bank - as dollars
+    if dollar_movements is None:
+        if timing != '':
+            dollar_movements = f'{selected_column} - {timing} Movement ($)'
+        else:
+            dollar_movements = f'{selected_column} - Movement ($)'
+    df_sorted[dollar_movements] = df_sorted.groupby(category_column)[selected_column].diff()
 
-    # Only keep data to the selected date or before
-    df_dated = df[df[date_column] <= selected_date]
+    # Calculate the movement in selected_column for each bank - as percentage
+    if percentage_movements is None:
+        if timing != '':
+            percentage_movements = f'{selected_column} - {timing} Movement (%)'
+        else:
+            percentage_movements = f'{selected_column} - Movement (%)'
+    df_sorted[percentage_movements] = df_sorted.groupby(category_column)[selected_column].pct_change()
 
-    # Extract dates from the dated df
-    filtered_dates_list = sorted(list(df_dated[date_column].unique()), reverse=True)
+    # Generate return values
+    df_dict = {}
+    df_dict['df'] = df_sorted
+    df_dict['category_col'] = category_column
+    df_dict['dollar_col'] = selected_column
+    df_dict['dollar_movements_col'] = dollar_movements
+    df_dict['percentage_movements_col'] = percentage_movements    
+    
+    return df_dict
 
-    # Get prior month and yoy dates
-    prior_month = filtered_dates_list[1]
-    yoy_month = filtered_dates_list[12]    
 
-    return complete_dates_list, selected_date, df_dated, filtered_dates_list, prior_month, yoy_month
-
-def column_selection(
+def aggregate_sums(
         df,
         date_column,
-        group_by_columns,
-        default_column,
-        col2,
+        category_column
 ):
+    # Ensure 'Period' is a datetime column
+    df[date_column] = pd.to_datetime(df[date_column])
 
-    # Extract unique values from the column for dropdown options    
-    columns_list = [col for col in list(df.columns) if col not in group_by_columns]
+    # Drop the 'Institution Name' as it's not needed for aggregation
+    df_dropped = df.drop(columns=[category_column])
 
-    # Create a dropdown widget with the unique values from the column
-    with col2:
-        selected_column = st.selectbox('Select column', columns_list, index=columns_list.index(default_column))
+    # Aggregate the account balances for each month
+    monthly_aggregates = df_dropped.groupby(date_column).sum().reset_index()
 
-    df_column = df[group_by_columns + [selected_column]]
+    # Reshape the DataFrame to have accounts and their values in separate columns
+    melted_df = monthly_aggregates.melt(id_vars=[date_column], var_name='Account', value_name='Value')
 
-    return df_column, selected_column
+    df_dict = calculate_movement_cols(
+        df = melted_df,
+        date_column = date_column,
+        category_column = 'Account',
+        selected_column = 'Value',
+        dollar_movements = 'Movement ($)',
+        percentage_movements = 'Movement (%)',
+        timing = 'MoM',
+    )
 
-def category_selection(
-        df,
-        category_column,
-        default_category,
-        aliases_dict,
-        col3,
-):
-    # Extract unique values from the column for dropdown options
-    categories = list(df[category_column].unique())
-
-    # Set a default selected value for the dropdown, if it exists
-    default_category = default_category if default_category in categories else categories[0]
-
-    # Create a dropdown widget with the unique values from the column
-    with col3:
-        selected_category = st.selectbox('Select ' + category_column, categories, index=categories.index(default_category))
-
-    # Create alias for the selected category
-    alias = aliases_dict[selected_category] if selected_category in aliases_dict else selected_category
-
-    return selected_category, alias
-
-def top_x_selection(
-        df,
-        date_column,
-        selected_date,
-        category_column,
-        selected_category,
-        selected_column,
-        default_x_value = None,
-):
-    current_df = df[df[date_column] == selected_date][[category_column, selected_column]].sort_values(by=selected_column, ascending=False)
-
-    # Define default_x_value if not set
-    if default_x_value == None:
-        default_x_value=int(len(current_df)/5)
-
-    # Create a slider widget with the unique values from the column
-    top_x_value = st.slider('Select Top x', 1, len(current_df), default_x_value, 1)
-
-    # Get Selected Month Data
-    # current_month_df = df_ranked[df_ranked[date_column] == selected_date]
-
-    # Filter the data based on the selected option
-    top_x_category_list = current_df.iloc[0:(top_x_value+1) , :][category_column].tolist()    
-
-    # Add selected category to list incase it isnt present
-    top_x_category_list.append(selected_category)
-
-    # Ensure list has only unique values
-    top_x_category_list = list(set(top_x_category_list))
-
-    return top_x_value, top_x_category_list
-        
-def create_top_x_and_other_df(
-        df,
-        date_column,
-        category_column,
-        top_x_category_list,
-        selected_column,
-):
-    # Assuming df is your DataFrame with columns: date_column, category_column, and selected_category
-    # and categories of interest are in the list: top_x_category_list
-
-    # Generate top x df
-
-    # Filter DataFrame to include only categories of interest
-    top_x_filtered_df = df[df[category_column].isin(top_x_category_list)][[date_column, category_column, selected_column]]
-
-    # Group by month and category, summing the values
-    top_x_grouped_df = top_x_filtered_df.groupby([top_x_filtered_df[date_column], category_column]).sum().reset_index()
-
-
-    # 'Other' rows generator
-
-    # Create a DataFrame with all unique months
-    # to do: ensures there are no missing months (typing issue)
-    # to do: all_months = pd.period_range(start=df[date_column].min(), end=df[date_column].max())
-    # to do: all_months_df = pd.DataFrame({date_column: all_months})
-
-    all_months_df = pd.DataFrame({date_column: df[date_column].unique()})
-
-    # Cartesian product to get all combinations of months and categories of interest
-    all_combinations_df = all_months_df.assign(key=1).merge(pd.DataFrame({category_column: top_x_category_list, 'key': 1}), on='key').drop('key', axis=1)
-
-
-    # Merge with grouped DataFrame to fill missing combinations with zeros
-    merged_df = pd.merge(all_combinations_df, top_x_grouped_df, on=[date_column, category_column], how='left').fillna(0)
-
-    # Calculate sum of values for 'other' category for each month
-    other_values = df[~df[category_column].isin(top_x_category_list)].groupby(df[date_column])[selected_column].sum().reset_index()
-    other_values[category_column] = 'other'
-
-    # Append 'other' values to merged DataFrame
-    top_x_and_other_df = pd.concat([merged_df, other_values], ignore_index=True)
-
-    # Sort DataFrame by date and category
-    top_x_and_other_df = top_x_and_other_df.sort_values(by=[date_column, category_column])
-
-    # Reset index
-    top_x_and_other_df.reset_index(drop=True, inplace=True)
-
-    return top_x_and_other_df
+    return df_dict
 
 def ordered_category_list_fn(
         df,
@@ -163,10 +116,10 @@ def ordered_category_list_fn(
         other_at_end = True,
 ):
     # Get data for current month only
-    df = df[df[date_column] == selected_date]
+    df_current = df[df[date_column] == selected_date]
     
     # Create ordered list
-    ordered_category_list = df.sort_values(by=selected_column, ascending=False).copy()[category_column].tolist()
+    ordered_category_list = df_current.sort_values(by=selected_column, ascending=False).copy()[category_column].tolist()
 
     # Move 'other' if required
     if other_at_end:
@@ -177,6 +130,140 @@ def ordered_category_list_fn(
         ordered_category_list.append(other_col)
     
     return ordered_category_list
+
+def attach_market_info(
+        df,
+        date_column,
+        category_column,
+        selected_column,
+        market_position_df,
+):
+    # Ensure only required columns are included
+    market_position_df = market_position_df[[date_column , category_column, selected_column, 'Rank', 'Market Share']].copy()
+
+    # Create return df
+    df_ranked = pd.DataFrame()
+
+    # Loop through all dates
+    for date in df[date_column].unique():
+        # Get data for the current date
+        df_at_date = df[df[date_column] == date]
+
+        # Add rankings and market share
+        df_at_date_ranked = pd.merge(
+            df_at_date,
+            market_position_df,
+            on=[date_column, category_column, selected_column], how='left'
+        )
+
+        # Calculate 'other' values
+        df_at_date_ranked.loc[df_at_date_ranked[category_column] == 'other', 'Rank'] = len(df_at_date_ranked)
+        df_at_date_ranked.loc[df_at_date_ranked[category_column] == 'other', 'Market Share'] = (1 - df_at_date_ranked['Market Share'].sum())
+
+        # Update the df_ranked df
+        if len(df_ranked) == 0:
+            df_ranked = df_at_date_ranked.copy()
+        else:
+            df_ranked = pd.concat([df_ranked, df_at_date_ranked], ignore_index=True)
+
+    return df_ranked
+
+def create_top_x_and_other_df(
+        df_dated,
+        date_column,
+        selected_date,
+        category_column,
+        selected_column,
+        top_x_category_list,
+        market_position_df,
+):
+    # Assuming df_dated is your DataFrame with columns: date_column, category_column, and selected_category
+    # and categories of interest are in the list: top_x_category_list
+
+    # Generate top x df_dated
+
+    # Filter DataFrame to include only categories of interest
+    top_x_filtered_df = df_dated[df_dated[category_column].isin(top_x_category_list)][[date_column, category_column, selected_column]]
+
+    # Group by month and category, summing the values
+    top_x_grouped_df = top_x_filtered_df.groupby([top_x_filtered_df[date_column], category_column]).sum().reset_index()
+
+    # 'Other' rows generator
+
+    # Create a DataFrame with all unique months
+    # to do: ensures there are no missing months (typing issue)
+    # to do: all_months = pd.period_range(start=df_dated[date_column].min(), end=df_dated[date_column].max())
+    # to do: all_months_df = pd.DataFrame({date_column: all_months})
+
+    all_months_df = pd.DataFrame({date_column: df_dated[date_column].unique()})
+
+    # Cartesian product to get all combinations of months and categories of interest
+    all_combinations_df = all_months_df.assign(key=1).merge(pd.DataFrame({category_column: top_x_category_list, 'key': 1}), on='key').drop('key', axis=1)
+
+
+    # Merge with grouped DataFrame to fill missing combinations with zeros
+    merged_df = pd.merge(all_combinations_df, top_x_grouped_df, on=[date_column, category_column], how='left').fillna(0)
+
+    # Calculate sum of values for 'other' category for each month
+    other_values = df_dated[~df_dated[category_column].isin(top_x_category_list)].groupby(df_dated[date_column])[selected_column].sum().reset_index()
+    other_values[category_column] = 'other'
+
+    # Append 'other' values to merged DataFrame
+    top_x_and_other_df = pd.concat([merged_df, other_values], ignore_index=True)
+
+    # Sort DataFrame by date and category
+    top_x_and_other_df = top_x_and_other_df.sort_values(by=[date_column, category_column])
+
+    # Reset index
+    top_x_and_other_df.reset_index(drop=True, inplace=True)
+
+    ordered_category_list = ordered_category_list_fn(
+        df = top_x_and_other_df,
+        date_column = date_column,
+        selected_date = selected_date,
+        selected_column = selected_column,
+        category_column = category_column,
+        other_col = 'other',
+        other_at_end = True,
+    )
+
+    top_x_and_other_df_dict = calculate_movement_cols(
+        df=top_x_and_other_df,
+        date_column=date_column,
+        category_column=category_column,
+        selected_column=selected_column,
+        timing = 'MoM',
+    )
+
+    # Update df to include market share info
+    top_x_and_other_df_dict['df'] = attach_market_info(
+        df = top_x_and_other_df_dict['df'],
+        date_column = date_column,
+        category_column = category_column,
+        selected_column = selected_column,
+        market_position_df = market_position_df,
+    )
+
+    return top_x_and_other_df_dict, ordered_category_list
+
+def get_date_details(
+        date_col_df,
+        date_column,
+):
+    date_details = {}
+    date_details['mom_dates_list'] = sorted(list(date_col_df[date_column].unique()), reverse=True)    
+    date_details['yoy_dates_list'] = date_details['mom_dates_list'][0::12]
+    date_details['months_ago_list'] = get_months_ago_list(
+        df = date_col_df,
+        date_column = date_column,
+    )
+    no_months = len(date_details['mom_dates_list'])
+    for months_ago in [0, 1, 12, 48, 60]:
+        if no_months >= (months_ago+1):
+            date_details.update({f'date_{months_ago}_months_ago': date_details['mom_dates_list'][months_ago]})
+            date_details.update({f'date_{months_ago}_wording': period_ago(months_ago)})
+
+    return date_details
 
 def date_to_date_comparison(
         df,
@@ -193,10 +280,15 @@ def date_to_date_comparison(
     else:
         prefix_padded = ' ' + prefix + ' '
 
-    # df for teh selected dates
+    # df for the selected dates
+    df[date_column] = pd.to_datetime(df[date_column])
     df_two_dates = df[df[date_column].isin([selected_date, comparison_date])]
-    df_two_dates.loc[df_two_dates[date_column] == selected_date, date_column] = selected_column
-    df_two_dates.loc[df_two_dates[date_column] == comparison_date, date_column] = 'comparison'
+    df_two_dates.loc[df_two_dates[date_column] == selected_date, 'date_column_str'] = 'current'
+    df_two_dates.loc[df_two_dates[date_column] == comparison_date, 'date_column_str'] = 'comparison'
+    df_two_dates = df_two_dates.drop(date_column, axis=1).copy()
+    df_two_dates.loc[:, date_column] = df_two_dates['date_column_str']
+    df_two_dates = df_two_dates.drop('date_column_str', axis=1).copy()
+    df_two_dates = df_two_dates[[date_column, category_column, selected_column]]
 
     # Pivot the DataFrame
     pivot_df = df_two_dates.pivot_table(index=category_column, columns=date_column, values=selected_column, aggfunc='first')
@@ -206,7 +298,7 @@ def date_to_date_comparison(
     
     # Dollar Movements
     dollar_movements_col_name = f"{selected_column} -{prefix_padded}Movement ($)"
-    pivot_df[dollar_movements_col_name] = pivot_df[selected_column] - pivot_df['comparison']
+    pivot_df[dollar_movements_col_name] = pivot_df['current'] - pivot_df['comparison']
 
     # Dollar Direction
     movement_direction_col_name = f"{selected_column} -{prefix_padded}Movement Direction"
@@ -236,116 +328,84 @@ def date_to_date_comparison(
 def filter_data(
         df,
         date_column,
-        group_by_columns,
-        default_column,
+        selected_date,
+        selected_column,
         category_column,
-        default_category,
-        aliases_dict,
+        selected_category,
+        top_x_category_list,
+        group_by_columns,
 ):
+    # Generate return dictionaries
     dfs_dict = {}
-    selections_dict = {}
     details_dicts = {}
 
-    dfs_dict['original'] = df
+    # Add original df to dfs dictionary
+    dfs_dict['original_df'] = df.copy()
 
-    # Create three columns to display the dropdowns
-    col1, col2, col3 = st.columns(3)
-
-    # Place a selectbox in each column
-    
-
-    
-
-
-    # Filter for the selected date
-    (
-        selections_dict['complete_dates_list'],
-        selections_dict['selected_date'],
-        dfs_dict['df_dated'],
-        selections_dict['filtered_dates_list'],
-        selections_dict['prior_month'],
-        selections_dict['yoy_month'],
-    ) = date_selection(
-        df=dfs_dict['original'],
-        date_column=date_column,
-        col1=col1,
+    # Filter on the selected data filters
+    dfs_dict['dated_df'] = df.query(
+        f"`{date_column}` <= '{selected_date}'"
     )
 
-    # Filter for the selected Column
-    (
-        dfs_dict['df_column'],
-        selections_dict['selected_column'],
-    ) = column_selection(
-        df=dfs_dict['df_dated'],
-        date_column=date_column,
-        group_by_columns=group_by_columns,
-        default_column=default_column,
-        col2=col2,
-    )
-
-    # Select Category
-    (
-        selections_dict['selected_category'],
-        selections_dict['alias'],
-    ) = category_selection(
-        df=dfs_dict['df_column'],
-        category_column=category_column,
-        default_category=default_category,
-        aliases_dict=aliases_dict,
-        col3=col3,
-    )
-
-    # Select top x
-    selections_dict['top_x_value'], selections_dict['top_x_category_list'] = top_x_selection(
-        df=dfs_dict['original'],
-        date_column=date_column,
-        selected_date=selections_dict['selected_date'],
-        category_column=category_column,
-        selected_category=selections_dict['selected_column'],
-        selected_column=selections_dict['selected_column'],
-        default_x_value = 15,
-    )
-
-    # Create df with top_x and other rows
-    dfs_dict['top_x_and_other_df'] = create_top_x_and_other_df(
-        df = df,
+    # Market Positioning df
+    dfs_dict['market_position_df'] = market_positions(
+        df = dfs_dict['dated_df'],
         date_column = date_column,
         category_column = category_column,
-        top_x_category_list = selections_dict['top_x_category_list'],
-        selected_column = selections_dict['selected_column'],
+        selected_column = selected_column
     )
 
-    # Create default cetegory order - ordered list of category values including 'other' row
-    selections_dict['ordered_category_list'] = ordered_category_list_fn(
-        df = dfs_dict['top_x_and_other_df'],
-        date_column=date_column,
-        selected_date=selections_dict['selected_date'],
-        selected_column=selections_dict['selected_column'],
-        category_column=category_column,
-        other_col = 'other',
-        other_at_end = True,
+    # Get relevant dates
+    details_dicts.update(
+        get_date_details(
+            date_col_df = dfs_dict['dated_df'],
+            date_column = date_column
+        )
     )
+
+    # Aggregate Data
+    dfs_dict['aggregates_df_dict'] = aggregate_sums(
+        df = dfs_dict['dated_df'],
+        date_column = date_column,
+        category_column = category_column,
+    )
+
+    # Top x data
+    (
+        dfs_dict['top_x_df_dict'],
+        details_dicts['ordered_category_list']
+    ) = create_top_x_and_other_df(
+        df_dated = dfs_dict['dated_df'],
+        date_column = date_column,
+        selected_date = selected_date,
+        category_column = category_column,
+        selected_column = selected_column,
+        top_x_category_list = top_x_category_list,
+        market_position_df = dfs_dict['market_position_df'],
+    )
+
+    # Create period on period dfs
+    top_x_df = dfs_dict['top_x_df_dict']['df']
+    for months_ago in details_dicts['months_ago_list']:
+
+        # Get reference date
+        current_date = details_dicts['mom_dates_list'][0]
+        reference_date = details_dicts['mom_dates_list'][months_ago]
+
+        dfs_dict[details_dicts[f'date_{months_ago}_wording']] = date_to_date_comparison(
+            df=top_x_df,
+            date_column=date_column,
+            selected_date=current_date,
+            comparison_date=reference_date,
+            selected_column=selected_column,
+            category_column=category_column,
+            prefix = details_dicts[f'date_{months_ago}_wording'].capitalize(),
+        )
         
-    # Month on Month data comparisons
-    details_dicts['mom_dict'] = date_to_date_comparison(
-        df=dfs_dict['top_x_and_other_df'],
-        date_column=date_column,
-        selected_date=selections_dict['selected_date'],
-        comparison_date=selections_dict['prior_month'],
-        selected_column=selections_dict['selected_column'],
-        category_column=category_column,
-        prefix = "MoM",
-    )
+    # months_ago_list = get_months_ago_list(
+    #     df = dfs_dict['top_x_df_dict']['df'],
+    #     date_column = date_column,
+    # )
+    # print(months_ago_list)
 
-    # Year on Year data comparisons
-    details_dicts['yoy_dict'] = date_to_date_comparison(
-        df=dfs_dict['top_x_and_other_df'],
-        date_column=date_column,
-        selected_date=selections_dict['selected_date'],
-        comparison_date=selections_dict['yoy_month'],
-        selected_column=selections_dict['selected_column'],
-        category_column=category_column,
-        prefix = "YoY",
-    )
-
-    return dfs_dict, selections_dict, details_dicts
+    return dfs_dict, details_dicts
